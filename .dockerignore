@@ -7,3 +7,5 @@ __pycache__
 *.py[cod]
 tasks
 context/submission.csv
+frontend/node_modules
+frontend/dist

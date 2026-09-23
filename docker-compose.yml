@@ -6,11 +6,10 @@ services:
     volumes:
       - ./context:/app
   web:
-    build: .
-    image: signbridge-agent:local
+    build:
+      context: .
+      dockerfile: Dockerfile.web
+    image: signbridge-web:local
     working_dir: /app
-    command: python web_app.py --host 0.0.0.0 --port 8765
     ports:
       - "127.0.0.1:8765:8765"
-    volumes:
-      - ./context:/app

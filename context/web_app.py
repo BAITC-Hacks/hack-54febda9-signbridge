@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import mimetypes
 from http.server import BaseHTTPRequestHandler, HTTPServer
 from pathlib import Path
 from statistics import median
@@ -27,20 +28,13 @@ from scoring_core import (
 
 
 ROOT = Path(__file__).resolve().parent
-WEB = ROOT / "web"
+WEB = ROOT / "web_dist" if (ROOT / "web_dist").exists() else ROOT.parent / "frontend" / "dist"
 FILTER_COLUMNS = (
     "filter_arpu_segment",
     "filter_data_segment",
     "filter_call_segment",
     "filter_current_tariff",
 )
-ASSETS = {
-    "/": ("index.html", "text/html; charset=utf-8"),
-    "/app.js": ("app.js", "text/javascript; charset=utf-8"),
-    "/styles.css": ("styles.css", "text/css; charset=utf-8"),
-}
-
-
 def evaluate_seed(seed: int) -> dict:
     """Run Agent.act and score it with the same mock mechanics as local_eval."""
     env, internals = make_mock_env(
@@ -178,9 +172,13 @@ class DemoHandler(BaseHTTPRequestHandler):
 
     def do_GET(self) -> None:
         parsed = urlsplit(self.path)
-        if parsed.path in ASSETS:
-            filename, content_type = ASSETS[parsed.path]
-            self._reply(200, (WEB / filename).read_bytes(), content_type)
+        if parsed.path == "/" or parsed.path.startswith("/static/") or parsed.path == "/favicon.ico":
+            asset = (WEB / (parsed.path.lstrip("/") or "index.html")).resolve()
+            if not asset.is_relative_to(WEB.resolve()) or not asset.is_file():
+                self._json(404, {"error": "Файл не найден. Соберите frontend: npm run build"})
+                return
+            content_type = mimetypes.guess_type(asset.name)[0] or "application/octet-stream"
+            self._reply(200, asset.read_bytes(), content_type)
             return
 
         if parsed.path not in ("/api/run", "/api/robustness"):

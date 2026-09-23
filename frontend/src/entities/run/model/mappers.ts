@@ -1,0 +1,60 @@
+import type { RunResponse } from "../api/types";
+
+import type { Run } from "./types";
+
+export function mapRun(response: RunResponse): Run {
+  return {
+    seed: response.seed,
+    status: response.status,
+    agentError: response.agent_error,
+    baseline: response.baseline,
+    grossLift: response.gross_lift,
+    totalCost: response.total_cost,
+    netGain: response.net_gain,
+    growthPct: response.growth_pct,
+    coveragePct: response.coverage_pct,
+    riskPct: response.risk_pct,
+    totalContacts: response.total_contacts,
+    uniqueCustomers: response.unique_customers,
+    audienceTotal: response.audience_total,
+    budgetLimit: response.budget_limit,
+    contactLimit: response.contact_limit,
+    pilots: response.pilots.map((pilot) => ({
+      name: pilot.name,
+      channel: pilot.channel,
+      fromTariff: pilot.from_tariff,
+      targetTariff: pilot.target_tariff,
+      arpuSegment: pilot.arpu_segment,
+      dataSegment: pilot.data_segment,
+      callSegment: pilot.call_segment,
+      contacts: pilot.contacts,
+      cost: pilot.cost,
+      observedLiftPct: pilot.observed_lift_pct,
+    })),
+    campaigns: response.campaigns.map((campaign) => ({
+      name: campaign.name,
+      fromTariff: campaign.from_tariff,
+      toTariff: campaign.to_tariff,
+      arpuSegment: campaign.arpu_segment,
+      dataSegment: campaign.data_segment,
+      callSegment: campaign.call_segment,
+      channel: campaign.channel,
+      contacts: campaign.contacts,
+      cost: campaign.cost,
+      grossLift: campaign.gross_lift,
+      capped: campaign.capped,
+    })),
+    channels: response.channels,
+    modelTrace: response.model_trace.map((trace) => ({
+      pilot: trace.pilot,
+      source: trace.source || "historical",
+      currentTariff: trace.current_tariff,
+      targetTariff: trace.target_tariff,
+      arpuSegment: trace.arpu_segment,
+      predictedBeforePct: trace.predicted_before_pct,
+      uncertaintyBeforePct: trace.uncertainty_before_pct,
+      observedPct: trace.observed_pct,
+      predictedAfterPct: trace.predicted_after_pct,
+    })),
+  };
+}

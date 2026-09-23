@@ -63,7 +63,10 @@ class Agent:
     PILOT_SIZE_BY_TIER = {"priority": 200, "confirm": 100, "exploratory": 100, "reserve": 100}
 
     PILOT_CHANNEL = "sms"
-    MAX_PILOTS_THIS_RUN = 8
+    BASE_SMS_PILOTS = 8
+    MAX_PILOTS_THIS_RUN = 9  # один дополнительный пилот для непокрытой крупной группы
+    COVERAGE_PILOT_SIZE = 200
+    MIN_COVERAGE_AUDIENCE = 200
     MIN_PILOT_SIZE = 10
     # Внутренний потолок разведки: 15% бюджета (см. задачу 2), не требование его исчерпать.
     EXPLORATION_BUDGET_SHARE = 0.15
@@ -91,10 +94,49 @@ class Agent:
     POST_PILOT_CAMPAIGN_CAP = 35_000
     POST_PILOT_CHANNEL_CAP = 50_000
 
-    def __init__(self, use_bandit: bool = True):
-        # False is kept for a reproducible comparison with the previous rules.
+    def __init__(self, use_bandit: bool = True, explore_new_groups: bool = True):
+        # Flags preserve both earlier policies for paired offline comparisons.
         self.use_bandit = use_bandit
+        self.explore_new_groups = explore_new_groups
         self.model_trace = []
+
+    def _coverage_candidate(self, env):
+        """Выбрать одну крупную непроверенную ячейку без знания её эффекта.
+
+        Берём уже осмысленный переход из исторического списка, но проверяем
+        другой ARPU-сегмент. Размер потенциальной выручки задаёт приоритет
+        разведки, а не обещает положительный эффект кампании.
+        """
+        profile = env.customer_profile
+        required = {"current_tariff", "arpu_segment", "predicted_arpu"}
+        if not required.issubset(profile.columns):
+            return None
+        prices = dict(zip(env.tariffs["tariff_plan_code"], env.tariffs["price_tariff"]))
+        existing_groups = {(c["current_tariff"], c["arpu_segment"]) for c in self.CANDIDATES}
+        grouped = profile.groupby(["current_tariff", "arpu_segment"], observed=True)["predicted_arpu"].agg(
+            ["size", "mean"]
+        )
+        options = []
+        for order, candidate in enumerate(self.CANDIDATES):
+            source = candidate["current_tariff"]
+            target = candidate["target_tariff"]
+            if not (prices.get(target, 0) > prices.get(source, float("inf"))):
+                continue
+            for (current, segment), row in grouped.iterrows():
+                if current != source or (current, segment) in existing_groups:
+                    continue
+                audience_size = int(row["size"])
+                if audience_size < self.MIN_COVERAGE_AUDIENCE:
+                    continue
+                potential_arpu = min(audience_size, self.MAX_CUSTOMERS_PER_CAMPAIGN) * float(row["mean"])
+                options.append((potential_arpu, -order, str(segment), {
+                    "current_tariff": source,
+                    "arpu_segment": str(segment),
+                    "target_tariff": target,
+                    "tier": "coverage",
+                    "coverage": True,
+                }))
+        return max(options, key=lambda option: option[:3])[3] if options else None
 
     def act(self, env) -> list[dict]:
         """Провести разведочные и (при необходимости) прямые пилоты, вернуть кампании."""
@@ -143,8 +185,11 @@ class Agent:
         median_arpu = max(float(env.customer_profile["predicted_arpu"].median()), 1.0)
         prices = dict(zip(env.tariffs["tariff_plan_code"], env.tariffs["price_tariff"]))
         median_price = max(float(env.tariffs["price_tariff"].median()), 1.0)
+        coverage_candidate = self._coverage_candidate(env) if self.explore_new_groups else None
+        candidates = self.CANDIDATES + ([coverage_candidate] if coverage_candidate else [])
+        max_pilots = self.MAX_PILOTS_THIS_RUN if coverage_candidate else self.BASE_SMS_PILOTS
         options = []
-        for order, candidate in enumerate(self.CANDIDATES):
+        for order, candidate in enumerate(candidates):
             audience = self._audience(env, candidate)
             if len(audience) < self.MIN_PILOT_SIZE:
                 continue
@@ -168,7 +213,7 @@ class Agent:
         results = []
         used_groups = set()
         model_active = True
-        while options and len(results) < self.MAX_PILOTS_THIS_RUN and env.pilots_left > 0:
+        while options and len(results) < max_pilots and env.pilots_left > 0:
             budget_left = min(float(env.remaining_budget), exploration_budget - pilot_spent)
             if budget_left < cost_per_contact * self.MIN_PILOT_SIZE or env.remaining_contacts < self.MIN_PILOT_SIZE:
                 break
@@ -194,8 +239,14 @@ class Agent:
                 except (np.linalg.LinAlgError, ValueError, FloatingPointError):
                     model_active = False
 
-            if not model_active or len(results) < 4:
+            coverage_options = [option for option in eligible if option["candidate"].get("coverage")]
+            if len(results) < 4:
                 # Four stronger historical hypotheses anchor the online model.
+                option = min(eligible, key=lambda entry: entry["order"])
+            elif coverage_options:
+                # Reserve one pilot for an audience that the fixed list misses.
+                option = coverage_options[0]
+            elif not model_active:
                 option = min(eligible, key=lambda entry: entry["order"])
             else:
                 option = max(eligible, key=lambda entry: (entry["opportunity"], -entry["order"]))
@@ -205,7 +256,8 @@ class Agent:
             candidate = option["candidate"]
             options.remove(option)
             group = (candidate["current_tariff"], candidate["arpu_segment"])
-            nominal_n = self.PILOT_SIZE_BY_TIER[candidate["tier"]]
+            nominal_n = (self.COVERAGE_PILOT_SIZE if candidate.get("coverage")
+                         else self.PILOT_SIZE_BY_TIER[candidate["tier"]])
             n = min(nominal_n, option["audience_size"], int(env.remaining_contacts))
             if cost_per_contact > 0:
                 n = min(n, int(budget_left // cost_per_contact))
@@ -239,6 +291,7 @@ class Agent:
                     before, uncertainty = option["prediction"]
                     self.model_trace.append({
                         "pilot": result.get("pilot", ""),
+                        "source": "coverage" if candidate.get("coverage") else "historical",
                         "current_tariff": candidate["current_tariff"],
                         "target_tariff": candidate["target_tariff"],
                         "arpu_segment": candidate["arpu_segment"],
@@ -262,7 +315,7 @@ class Agent:
         exploration_budget = env.total_budget * self.EXPLORATION_BUDGET_SHARE
         spent = sum(float(item.get("cost", 0)) for item in env.pilot_history)
         results = []
-        for candidate in self.CANDIDATES[: self.MAX_PILOTS_THIS_RUN]:
+        for candidate in self.CANDIDATES[: self.BASE_SMS_PILOTS]:
             if env.pilots_left <= 0:
                 break
             audience = self._audience(env, candidate)
@@ -316,13 +369,29 @@ class Agent:
         lcb_channel = lcb_sms * scale
         return lcb_channel, lcb_channel * avg_arpu_per_customer - cost
 
-    def _best_channel(self, env, lcb_sms, avg_arpu_per_customer):
-        best_channel, best_lcb, best_net = None, 0.0, 0.0
+    def _best_channel(self, env, lcb_sms, avg_arpu_per_customer, segment):
+        best_channel, best_lcb, best_net, best_reach, best_total = None, 0.0, 0.0, 0, 0.0
         for name in env.channels:
             lcb_channel, net_per_contact = self._channel_estimate(env, lcb_sms, avg_arpu_per_customer, name)
-            if best_channel is None or net_per_contact > best_net:
-                best_channel, best_lcb, best_net = name, lcb_channel, net_per_contact
-        return best_channel, best_lcb, best_net
+            if net_per_contact <= 0:
+                continue
+            cost = float(env.channels[name]["cost_per_contact"])
+            reach = min(len(segment), self.MAX_CUSTOMERS_PER_CAMPAIGN, int(env.remaining_contacts))
+            if cost > 0:
+                reach = min(reach, int(env.remaining_budget // cost))
+                if name in self.PAID_UNPILOTED_CHANNELS:
+                    # Прямой пилот может открыть этот потолок; до него оценка
+                    # остаётся оптимистичной, но учитывает форму фильтров.
+                    reach = min(reach, int(self.POST_PILOT_CAMPAIGN_CAP // cost))
+            if len(segment) > reach:
+                narrowed, _ = self._narrow_segment(segment, reach)
+                reach = len(narrowed) if narrowed is not None else 0
+            total_net = net_per_contact * reach
+            if total_net > best_total:
+                best_channel, best_lcb, best_net, best_reach, best_total = (
+                    name, lcb_channel, net_per_contact, reach, total_net
+                )
+        return best_channel, best_lcb, best_net, best_reach
 
     def _prepare_candidates(self, env, passing: list[dict]) -> list[dict]:
         """Построить предварительный выбор канала (экстраполяция от SMS) на каждого кандидата."""
@@ -338,11 +407,12 @@ class Agent:
                 continue
 
             avg_arpu = float(segment["predicted_arpu"].sum()) / len(segment)
-            channel, lcb_channel, net_per_contact = self._best_channel(env, entry["lcb_sms"], avg_arpu)
-            if net_per_contact <= 0:
+            channel, lcb_channel, net_per_contact, reach_estimate = self._best_channel(
+                env, entry["lcb_sms"], avg_arpu, segment
+            )
+            if channel is None or reach_estimate <= 0:
                 continue  # ни один канал не даёт положительную нижнюю оценку net
 
-            reach_estimate = min(len(segment), self.MAX_CUSTOMERS_PER_CAMPAIGN, int(env.remaining_contacts))
             cost = float(env.channels[channel]["cost_per_contact"])
             prelim.append({
                 "item": item,
@@ -350,6 +420,7 @@ class Agent:
                 "avg_arpu": avg_arpu,
                 "channel": channel,
                 "lcb_channel": lcb_channel,
+                "reach_estimate": reach_estimate,
                 "spend_estimate": reach_estimate * cost,
                 "direct_pilot_lcb": None,
                 "direct_pilot_cost": 0.0,
@@ -439,11 +510,12 @@ class Agent:
                 "segment": entry["segment"],
                 "channel": channel,
                 "net_per_contact": net_per_contact,
+                "reach_estimate": entry["reach_estimate"],
                 "campaign_cap": campaign_cap,
                 "channel_cap": channel_cap,
             })
 
-        candidates.sort(key=lambda c: c["net_per_contact"] * len(c["segment"]), reverse=True)
+        candidates.sort(key=lambda c: c["net_per_contact"] * c["reach_estimate"], reverse=True)
 
         campaigns = []
         remaining_contacts = int(env.remaining_contacts)
@@ -507,6 +579,7 @@ class Agent:
     @staticmethod
     def _narrow_segment(segment, max_customers):
         """Найти наибольший подсегмент по data_/call_segment, помещающийся в max_customers."""
+        best = None
         for col in ("data_segment", "call_segment"):
             if col not in segment.columns:
                 continue
@@ -514,5 +587,7 @@ class Agent:
             fitting = sizes[sizes <= max_customers]
             if not fitting.empty:
                 value = fitting.idxmax()
-                return segment[segment[col] == value], (col, value)
-        return None, None
+                subset = segment[segment[col] == value]
+                if best is None or len(subset) > len(best[0]):
+                    best = (subset, (col, value))
+        return best if best is not None else (None, None)
