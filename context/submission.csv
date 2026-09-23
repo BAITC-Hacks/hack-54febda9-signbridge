@@ -1,3 +1,5 @@
 campaign_name,filter_arpu_segment,filter_data_segment,filter_call_segment,filter_current_tariff,target_tariff,channel
-pilot_confirm_tariff_13_tariff_8_MID,MID,,,tariff_13,tariff_8,call
 pilot_confirm_tariff_4_tariff_8_MID,MID,,,tariff_4,tariff_8,digital_ads
+pilot_confirm_tariff_13_tariff_8_MID,MID,HEAVY,,tariff_13,tariff_8,call
+pilot_confirm_tariff_8_tariff_9_LOW,LOW,HEAVY,,tariff_8,tariff_9,call
+pilot_confirm_tariff_12_tariff_8_MID,MID,NON_USER,,tariff_12,tariff_8,call
