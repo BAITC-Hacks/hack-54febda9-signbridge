@@ -1,0 +1,9 @@
+.git
+.idea
+.agents
+.venv
+venv
+__pycache__
+*.py[cod]
+tasks
+context/submission.csv

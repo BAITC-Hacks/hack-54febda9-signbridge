@@ -15,6 +15,10 @@ Treat these as hard limits: 10 campaigns; 5,000 customers per campaign; 15,000 t
 
 Optimize expected incremental ARPU net of contact costs. Account for pilot cost and uncertainty, avoid spending on weak or tiny audiences, and avoid counting duplicated reach as incremental benefit. The judging effects differ from mock effects, so prefer evidence-based/adaptive logic over constants tuned to one local run. Select channels based on their cost and expected effectiveness, rather than assuming one channel is always best.
 
+## Project runtime
+
+Keep setup lightweight: Python with only the numerical/data dependencies used by the case, declared in the root `requirements.txt`. Prefer the project Docker/Compose workflow for repeatable local runs, with a local virtual-environment path documented as a fallback. This is a batch agent evaluated by the supplied environment; do not add an API server, database, or frontend unless the user asks for a demo or product interface. Treat other repositories' Dockerfiles and dependency lists as examples, not requirements; do not copy unrelated service dependencies such as web frameworks or Redis.
+
 ## Three-developer collaboration
 
 When the user asks to work as a three-person team and delegation is available, split independent work into these lanes:

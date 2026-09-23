@@ -1,0 +1,7 @@
+services:
+  agent:
+    build: .
+    image: signbridge-agent:local
+    working_dir: /app
+    volumes:
+      - ./context:/app
