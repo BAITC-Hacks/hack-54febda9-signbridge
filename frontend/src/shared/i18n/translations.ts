@@ -93,6 +93,7 @@ export const translations = {
     strategyDescription:
       "Четыре подхода проходят одинаковые сценарии. Сравните выгоду и риск.",
     strategyRunsLabel: "Сценариев для сравнения",
+    scenarioUnit: "сценариев",
     strategyRun: "Сравнить",
     strategyLoading: "Идёт сравнение…",
     strategyError: "Сравнение не удалось",
@@ -242,6 +243,7 @@ export const translations = {
     strategyDescription:
       "Four approaches face the same scenarios. Compare gain and risk.",
     strategyRunsLabel: "Scenarios to compare",
+    scenarioUnit: "runs",
     strategyRun: "Compare strategies",
     strategyLoading: "Comparing…",
     strategyError: "Comparison failed",
@@ -391,6 +393,7 @@ export const translations = {
     strategyDescription:
       "Төрт тәсіл бірдей сценарийден өтеді. Түсім мен тәуекелді салыстырыңыз.",
     strategyRunsLabel: "Салыстыру сценарийлері",
+    scenarioUnit: "сценарий",
     strategyRun: "Салыстыру",
     strategyLoading: "Салыстырылуда…",
     strategyError: "Салыстыру орындалмады",

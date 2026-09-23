@@ -1,4 +1,6 @@
 import ThunderboltOutlined from "@ant-design/icons/lib/icons/ThunderboltOutlined";
+
+import { useLanguage } from "@/shared/i18n";
 import { Button, Select, Space } from "antd";
 
 interface StrategyComparisonControlsProps {
@@ -14,15 +16,17 @@ export function StrategyComparisonControls({
   onCompare,
   loading,
 }: StrategyComparisonControlsProps) {
+  const { t } = useLanguage();
+
   return (
     <Space wrap>
       <Select
-        aria-label="Сценариев для сравнения"
+        aria-label={t.strategyRunsLabel}
         value={runs}
         onChange={onRunsChange}
         options={[5, 10, 15, 20].map((value) => ({
           value,
-          label: `${value} сценариев`,
+          label: `${value} ${t.scenarioUnit}`,
         }))}
         className="min-w-36"
       />
@@ -33,7 +37,7 @@ export function StrategyComparisonControls({
         loading={loading}
         onClick={onCompare}
       >
-        Сравнить стратегии
+        {loading ? t.strategyLoading : t.strategyRun}
       </Button>
     </Space>
   );

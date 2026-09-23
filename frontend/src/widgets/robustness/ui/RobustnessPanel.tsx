@@ -1,11 +1,10 @@
-import { Alert, Card, Empty, Statistic, Table, Tag, Typography } from "antd";
+import { Alert, Card, Empty, Statistic, Table, Tag } from "antd";
 import type { TableProps } from "antd";
 
 import { RobustnessControls } from "@/features/check-robustness";
-
 import type { Robustness, RobustnessResult } from "@/entities/robustness";
-
-import { money } from "@/shared/lib";
+import { useLanguage } from "@/shared/i18n";
+import { integer, money } from "@/shared/lib";
 
 interface RobustnessPanelProps {
   runs: number;
@@ -16,31 +15,6 @@ interface RobustnessPanelProps {
   robustness: Robustness | undefined;
 }
 
-const columns: TableProps<RobustnessResult>["columns"] = [
-  {
-    title: "Сценарий",
-    dataIndex: "seed",
-    key: "seed",
-    render: (value: number) => `#${value}`,
-  },
-  {
-    title: "Чистый прирост",
-    dataIndex: "netGain",
-    key: "netGain",
-    render: (value: number) => money(value),
-  },
-  {
-    title: "Статус",
-    dataIndex: "status",
-    key: "status",
-    render: (value: string) => (
-      <Tag color={value === "PASS" ? "success" : "error"}>
-        {value === "PASS" ? "Плюс" : "Минус"}
-      </Tag>
-    ),
-  },
-];
-
 export function RobustnessPanel({
   runs,
   onRunsChange,
@@ -49,13 +23,35 @@ export function RobustnessPanel({
   error,
   robustness,
 }: RobustnessPanelProps) {
+  const { language, t } = useLanguage();
+  const columns: TableProps<RobustnessResult>["columns"] = [
+    {
+      title: t.scenarioColumn,
+      dataIndex: "seed",
+      key: "seed",
+      render: (value: number) => `#${integer(value, language)}`,
+    },
+    {
+      title: t.netGain,
+      dataIndex: "netGain",
+      key: "netGain",
+      render: (value: number) => money(value, language),
+    },
+    {
+      title: t.statusColumn,
+      dataIndex: "status",
+      key: "status",
+      render: (value: string) => (
+        <Tag color={value === "PASS" ? "success" : "error"}>
+          {value === "PASS" ? t.plus : t.minus}
+        </Tag>
+      ),
+    },
+  ];
+
   return (
-    <Card title="Проверка устойчивости" className="shadow-sm">
-      <Typography.Paragraph type="secondary">
-        Несколько запусков с разными случайными выборками показывают, насколько
-        результат зависит от случайности пилотов. Это локальная проверка, а не
-        официальный балл.
-      </Typography.Paragraph>
+    <Card title={t.robustnessTitle} className="surface-card">
+      <p className="section-intro">{t.robustnessDescription}</p>
       <div className="max-w-sm">
         <RobustnessControls
           runs={runs}
@@ -66,50 +62,45 @@ export function RobustnessPanel({
       </div>
       {error && (
         <Alert
-          className="mt-4"
+          className="mt-5"
           type="error"
-          message="Не удалось провести проверку"
+          message={t.robustnessError}
           description={error.message}
           showIcon
         />
       )}
       {robustness ? (
         <>
-          <div className="mt-5 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div className="mt-7 grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
             <Statistic
-              title="Прогонов с плюсом"
-              value={`${robustness.positive} из ${robustness.runs}`}
+              title={t.positiveRuns}
+              value={`${robustness.positive} / ${robustness.runs}`}
             />
             <Statistic
-              title="Медианный прирост"
-              value={robustness.median}
-              formatter={() => money(robustness.median)}
+              title={t.median}
+              value={money(robustness.median, language)}
             />
             <Statistic
-              title="Минимум"
-              value={robustness.minimum}
-              formatter={() => money(robustness.minimum)}
+              title={t.minimum}
+              value={money(robustness.minimum, language)}
             />
             <Statistic
-              title="Максимум"
-              value={robustness.maximum}
-              formatter={() => money(robustness.maximum)}
+              title={t.maximum}
+              value={money(robustness.maximum, language)}
             />
           </div>
           <Table<RobustnessResult>
-            className="mt-5"
+            className="mt-6"
             rowKey="seed"
-            size="small"
+            size="middle"
             columns={columns}
             dataSource={robustness.results}
-            pagination={{ pageSize: 10 }}
+            pagination={{ pageSize: 10, showSizeChanger: false }}
+            scroll={{ x: 480 }}
           />
         </>
       ) : !loading && !error ? (
-        <Empty
-          className="mt-6"
-          description="Нажмите «Проверить», чтобы увидеть результаты"
-        />
+        <Empty className="mt-6" description={t.emptyRobustness} />
       ) : null}
     </Card>
   );
