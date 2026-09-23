@@ -2,6 +2,7 @@ import { Card, Progress, Statistic, Tag, Typography } from "antd";
 
 import type { Run } from "@/entities/run";
 
+import { useLanguage } from "@/shared/i18n";
 import { integer, money, percent } from "@/shared/lib";
 
 interface OverviewProps {
@@ -9,6 +10,7 @@ interface OverviewProps {
 }
 
 export function Overview({ run }: OverviewProps) {
+  const { language, t } = useLanguage();
   const budgetShare = Math.min(100, (run.totalCost / run.budgetLimit) * 100);
   const contactShare = Math.min(
     100,
@@ -19,50 +21,50 @@ export function Overview({ run }: OverviewProps) {
     <section aria-labelledby="result-heading" className="space-y-4">
       <div className="flex flex-wrap items-center gap-3">
         <Typography.Title id="result-heading" level={3} className="!mb-0">
-          Результат сценария #{run.seed}
+          {t.resultTitle} #{run.seed}
         </Typography.Title>
         <Tag color={run.status === "PASS" ? "success" : "error"}>
           {run.status === "PASS"
-            ? "Положительный результат"
-            : "Отрицательный результат"}
+            ? t.positive
+            : t.negative}
         </Tag>
       </div>
 
       <div className="grid gap-4 lg:grid-cols-[1.4fr_1fr_1fr]">
         <Card className="border-0 bg-slate-900 shadow-sm">
           <Typography.Text className="!text-blue-100">
-            Чистый прирост ARPU
+            {t.netGain}
           </Typography.Text>
           <div className="mt-2 text-3xl font-semibold tracking-tight text-white md:text-4xl">
-            {money(run.netGain)}
+            {money(run.netGain, language)}
           </div>
           <div className="mt-3 flex flex-wrap items-center gap-2">
             <Tag color={run.growthPct >= 0 ? "green" : "red"}>
-              {percent(run.growthPct, true)} к базе
+              {percent(run.growthPct, true, language)}
             </Tag>
             <Typography.Text className="!text-blue-100">
-              Прирост выручки после всех расходов на контакты
+              {t.netHelp}
             </Typography.Text>
           </div>
         </Card>
         <Card className="shadow-sm">
           <Statistic
-            title="Прирост до расходов"
+            title={t.grossLift}
             value={run.grossLift}
-            formatter={() => money(run.grossLift)}
+            formatter={() => money(run.grossLift, language)}
           />
           <Typography.Text type="secondary" className="mt-3 block text-xs">
-            По уникальным абонентам: повторный контакт не удваивает эффект.
+            {t.grossHelp}
           </Typography.Text>
         </Card>
         <Card className="shadow-sm">
           <Statistic
-            title="Стоимость контактов"
+            title={t.contactCost}
             value={run.totalCost}
-            formatter={() => money(run.totalCost)}
+            formatter={() => money(run.totalCost, language)}
           />
           <Typography.Text type="secondary" className="mt-3 block text-xs">
-            Включены и пилоты, и итоговые кампании.
+            {t.contactHelp}
           </Typography.Text>
         </Card>
       </div>
@@ -70,44 +72,44 @@ export function Overview({ run }: OverviewProps) {
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-4">
         <Card size="small" className="shadow-sm">
           <Statistic
-            title="Исходная выручка базы"
+            title={t.baseline}
             value={run.baseline}
-            formatter={() => money(run.baseline)}
+            formatter={() => money(run.baseline, language)}
           />
         </Card>
         <Card size="small" className="shadow-sm">
           <Statistic
-            title="Пилоты / финальные кампании"
+            title={t.pilotsCampaigns}
             value={`${run.pilots.length} / ${run.campaigns.length}`}
           />
           <Typography.Text type="secondary" className="text-xs">
-            Лимиты: 20 / 10
+            {t.limits}
           </Typography.Text>
         </Card>
         <Card size="small" className="shadow-sm">
           <Statistic
-            title="Уникальных людей"
-            value={integer(run.uniqueCustomers)}
+            title={t.uniquePeople}
+            value={integer(run.uniqueCustomers, language)}
           />
           <Typography.Text type="secondary" className="text-xs">
-            {percent(run.coveragePct)} от {integer(run.audienceTotal)} абонентов
+            {percent(run.coveragePct, false, language)} {t.audienceOf} {integer(run.audienceTotal, language)} {t.subscribers}
           </Typography.Text>
         </Card>
         <Card size="small" className="shadow-sm">
-          <Statistic title="Людей с минусом" value={percent(run.riskPct)} />
+          <Statistic title={t.negativePeople} value={percent(run.riskPct, false, language)} />
           <Typography.Text type="secondary" className="text-xs">
-            Доля с отрицательным эффектом по мок-модели
+            {t.mockOnly}
           </Typography.Text>
         </Card>
       </div>
 
-      <Card title="Использование лимитов" className="shadow-sm">
+      <Card title={t.limitsTitle} className="surface-card">
         <div className="grid gap-5 md:grid-cols-2">
           <div>
             <div className="mb-2 flex justify-between gap-3 text-sm">
-              <span>Бюджет</span>
+              <span>{t.budget}</span>
               <strong>
-                {money(run.totalCost)} / {money(run.budgetLimit)}
+                {money(run.totalCost, language)} / {money(run.budgetLimit, language)}
               </strong>
             </div>
             <Progress
@@ -118,9 +120,9 @@ export function Overview({ run }: OverviewProps) {
           </div>
           <div>
             <div className="mb-2 flex justify-between gap-3 text-sm">
-              <span>Контакты</span>
+              <span>{t.contacts}</span>
               <strong>
-                {integer(run.totalContacts)} / {integer(run.contactLimit)}
+                {integer(run.totalContacts, language)} / {integer(run.contactLimit, language)}
               </strong>
             </div>
             <Progress
@@ -131,8 +133,7 @@ export function Overview({ run }: OverviewProps) {
           </div>
         </div>
         <Typography.Text type="secondary" className="mt-3 block text-xs">
-          Контактов может быть больше, чем уникальных людей: каждое обращение
-          стоит денег.
+          {t.contactLimitHelp}
         </Typography.Text>
       </Card>
     </section>
