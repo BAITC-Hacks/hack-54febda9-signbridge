@@ -1,46 +1,35 @@
 import ExperimentOutlined from "@ant-design/icons/lib/icons/ExperimentOutlined";
-import { Alert, Card, Divider, Skeleton, Tag, Typography } from "antd";
+import ArrowDownOutlined from "@ant-design/icons/lib/icons/ArrowDownOutlined";
+import { Alert, Button, Card, Divider, Segmented, Skeleton, Typography } from "antd";
 import { useState } from "react";
 
 import { CampaignPlan } from "@/widgets/campaign-plan";
 import { Overview } from "@/widgets/overview";
 import { PilotAnalysis } from "@/widgets/pilot-analysis";
 import { RobustnessPanel } from "@/widgets/robustness";
+import { StrategyShowdown } from "@/widgets/strategy-showdown";
 
 import { RunControls } from "@/features/run-agent";
 
 import { useRobustness } from "@/entities/robustness";
 import { useRun } from "@/entities/run";
-
-const steps = [
-  {
-    title: "Собирает варианты",
-    detail: "Ищет возможные переходы на тарифы для групп абонентов.",
-  },
-  {
-    title: "Проводит пилоты",
-    detail:
-      "Проверяет несколько вариантов на малых группах, включая новую группу.",
-  },
-  {
-    title: "Обновляет прогноз",
-    detail:
-      "Совмещает исторические данные и измерения с учётом неопределённости.",
-  },
-  {
-    title: "Выбирает план",
-    detail:
-      "Подбирает кампании и каналы в пределах бюджета и лимита контактов.",
-  },
-];
+import { useStrategyComparison } from "@/entities/strategy-comparison";
+import { useLanguage } from "@/shared/i18n";
+import type { Language } from "@/shared/i18n";
 
 export function DashboardPage() {
+  const { language, setLanguage, t } = useLanguage();
   const [seed, setSeed] = useState<number>(42);
   const [selectedSeed, setSelectedSeed] = useState<number>(42);
   const [runs, setRuns] = useState<number>(15);
   const [checkedRuns, setCheckedRuns] = useState<number | null>(null);
+  const [strategyRuns, setStrategyRuns] = useState<number>(10);
+  const [checkedStrategyRuns, setCheckedStrategyRuns] = useState<number | null>(
+    null,
+  );
   const runQuery = useRun(selectedSeed);
   const robustnessQuery = useRobustness(checkedRuns);
+  const strategyQuery = useStrategyComparison(checkedStrategyRuns);
 
   const handleRun = (): void => {
     if (seed === selectedSeed) {
@@ -58,32 +47,69 @@ export function DashboardPage() {
     }
   };
 
+  const handleCompareStrategies = (): void => {
+    if (strategyRuns === checkedStrategyRuns) {
+      void strategyQuery.refetch();
+    } else {
+      setCheckedStrategyRuns(strategyRuns);
+    }
+  };
+
   return (
-    <main className="mx-auto max-w-7xl space-y-6 px-4 py-6 sm:px-6 lg:px-8">
-      <header className="rounded-2xl bg-slate-900 px-5 py-7 text-white sm:px-8">
-        <div className="mb-3 flex flex-wrap items-center gap-2">
-          <Tag color="blue">SignBridge</Tag>
-          <Tag color="gold">Локальное демо</Tag>
+    <main className="dashboard-shell mx-auto max-w-[1440px] space-y-8 px-4 py-5 sm:px-7 lg:px-10">
+      <header className="hero-panel">
+        <div className="hero-topline">
+          <span className="hero-brand">{t.brand}</span>
+          <div className="flex items-center gap-3">
+            <span className="hero-status"><i />{t.demo}</span>
+            <Segmented
+              aria-label="Language / Язык / Тіл"
+              value={language}
+              onChange={(value) => setLanguage(value as Language)}
+              options={[
+                { label: "ҚАЗ", value: "kk" },
+                { label: "РУС", value: "ru" },
+                { label: "ENG", value: "en" },
+              ]}
+              className="language-switch"
+            />
+          </div>
         </div>
-        <Typography.Title level={1} className="!mb-2 !text-white">
-          Агент тарифных кампаний
-        </Typography.Title>
-        <p className="max-w-3xl text-base text-slate-200">
-          Посмотрите, как агент проверяет гипотезы на пилотах и выбирает
-          кампании, которые должны увеличить выручку после расходов на связь с
-          абонентами.
-        </p>
+        <div className="hero-content">
+          <div className="hero-copy">
+            <Typography.Title level={1} className="hero-title">
+              {t.heroTitle}
+            </Typography.Title>
+            <p className="hero-subtitle">{t.heroSubtitle}</p>
+            <Button
+              href="#scenario-start"
+              size="large"
+              icon={<ArrowDownOutlined />}
+              className="hero-cta"
+            >
+              {t.jumpToRun}
+            </Button>
+          </div>
+          <div className="hero-metrics" aria-label={t.demo}>
+            <div><span>23 441</span><small>{t.heroAudience}</small></div>
+            <div><span>100 000</span><small>{t.heroBudget}, у.е.</small></div>
+            <div><span>20</span><small>{t.heroPilots}</small></div>
+          </div>
+        </div>
+        <div className="hero-orbit hero-orbit-one" aria-hidden="true" />
+        <div className="hero-orbit hero-orbit-two" aria-hidden="true" />
       </header>
 
       <Alert
+        className="mock-notice"
         type="info"
         showIcon
-        message="Все цифры на этой странице — результат локальной синтетической модели"
-        description="Это учебные данные для проверки логики агента. Реальные эффекты кампаний и оценка жюри могут отличаться. Денежные значения указаны в условных единицах."
+        message={t.disclaimerTitle}
+        description={t.disclaimer}
       />
 
-      <div className="grid gap-4 lg:grid-cols-[1fr_1.5fr]">
-        <Card title="Запустить сценарий" className="shadow-sm">
+      <div id="scenario-start" className="grid scroll-mt-8 gap-5 lg:grid-cols-[0.85fr_1.5fr]">
+        <Card title={t.runTitle} className="surface-card">
           <RunControls
             seed={seed}
             onSeedChange={setSeed}
@@ -91,17 +117,12 @@ export function DashboardPage() {
             loading={runQuery.isFetching}
           />
         </Card>
-        <Card title="Что делает AI-агент" className="shadow-sm">
-          <div className="grid gap-3 sm:grid-cols-2">
-            {steps.map((step, index) => (
-              <div key={step.title} className="rounded-xl bg-slate-50 p-3">
-                <div className="mb-1 flex items-center gap-2 font-semibold text-slate-800">
-                  <span className="flex h-6 w-6 items-center justify-center rounded-full bg-blue-100 text-xs text-blue-800">
-                    {index + 1}
-                  </span>
-                  {step.title}
-                </div>
-                <p className="m-0 text-sm text-slate-600">{step.detail}</p>
+        <Card title={t.agentTitle} className="surface-card">
+          <div className="agent-steps">
+            {t.steps.map(([title, detail], index) => (
+              <div key={title} className="agent-step">
+                <span className="agent-step-number">0{index + 1}</span>
+                <div><strong>{title}</strong><p>{detail}</p></div>
               </div>
             ))}
           </div>
@@ -112,7 +133,7 @@ export function DashboardPage() {
         <Alert
           type="error"
           showIcon
-          message="Не удалось запустить агента"
+          message={t.runError}
           description={runQuery.error.message}
         />
       )}
@@ -127,7 +148,7 @@ export function DashboardPage() {
             <Alert
               type="warning"
               showIcon
-              message="Во время работы агента возникла ошибка"
+          message={t.agentError}
               description={runQuery.data.agentError}
             />
           )}
@@ -146,11 +167,19 @@ export function DashboardPage() {
         robustness={robustnessQuery.data}
       />
 
-      <footer className="pb-4 text-sm text-slate-500">
+      <StrategyShowdown
+        runs={strategyRuns}
+        onRunsChange={setStrategyRuns}
+        onCompare={handleCompareStrategies}
+        loading={strategyQuery.isFetching}
+        error={strategyQuery.error}
+        comparison={strategyQuery.data}
+      />
+
+      <footer className="dashboard-footer">
         <Divider />
-        <ExperimentOutlined className="mr-2" />
-        Пилоты и оценка используют предоставленную мок-среду. Решения агент
-        принимает по доступным данным и наблюдениям.
+        <ExperimentOutlined />
+        <span>{t.footer}</span>
       </footer>
     </main>
   );

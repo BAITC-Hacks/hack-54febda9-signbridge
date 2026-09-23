@@ -1,8 +1,11 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { ConfigProvider } from "antd";
+import enUS from "antd/locale/en_US";
+import kkKZ from "antd/locale/kk_KZ";
 import ruRU from "antd/locale/ru_RU";
 
 import { DashboardPage } from "@/pages/dashboard";
+import { LanguageProvider, useLanguage } from "@/shared/i18n";
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -10,25 +13,39 @@ const queryClient = new QueryClient({
   },
 });
 
+const locales = { ru: ruRU, en: enUS, kk: kkKZ };
+
+function LocalizedApp() {
+  const { language } = useLanguage();
+
+  return (
+    <ConfigProvider
+      locale={locales[language]}
+      theme={{
+        token: {
+          colorPrimary: "#047857",
+          colorInfo: "#047857",
+          colorSuccess: "#047857",
+          colorText: "#14201e",
+          colorTextSecondary: "#52615d",
+          colorBgLayout: "#f5f5f0",
+          borderRadius: 16,
+          fontFamily:
+            "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
+        },
+      }}
+    >
+      <DashboardPage />
+    </ConfigProvider>
+  );
+}
+
 export function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ConfigProvider
-        locale={ruRU}
-        theme={{
-          token: {
-            colorPrimary: "#1768ac",
-            colorInfo: "#1768ac",
-            colorSuccess: "#14835f",
-            colorBgLayout: "#f4f7fb",
-            borderRadius: 12,
-            fontFamily:
-              "Inter, -apple-system, BlinkMacSystemFont, Segoe UI, sans-serif",
-          },
-        }}
-      >
-        <DashboardPage />
-      </ConfigProvider>
+      <LanguageProvider>
+        <LocalizedApp />
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }

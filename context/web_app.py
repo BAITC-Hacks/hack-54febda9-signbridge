@@ -9,7 +9,7 @@ from __future__ import annotations
 import argparse
 import json
 import mimetypes
-from http.server import BaseHTTPRequestHandler, HTTPServer
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 from pathlib import Path
 from statistics import median
 from urllib.parse import parse_qs, urlsplit
@@ -17,6 +17,7 @@ from urllib.parse import parse_qs, urlsplit
 import pandas as pd
 
 from agent import Agent
+from benchmark_strategy import run_benchmark
 from mock_environment import _mock_fallback, _mock_impact_model, make_mock_env
 from scoring_core import (
     MAX_CAMPAIGNS,
@@ -181,7 +182,7 @@ class DemoHandler(BaseHTTPRequestHandler):
             self._reply(200, asset.read_bytes(), content_type)
             return
 
-        if parsed.path not in ("/api/run", "/api/robustness"):
+        if parsed.path not in ("/api/run", "/api/robustness", "/api/strategy-benchmark"):
             self._json(404, {"error": "Страница не найдена"})
             return
 
@@ -192,11 +193,22 @@ class DemoHandler(BaseHTTPRequestHandler):
                 if not 0 <= seed <= 1_000_000:
                     raise ValueError("Seed должен быть от 0 до 1 000 000")
                 payload = evaluate_seed(seed)
-            else:
+            elif parsed.path == "/api/robustness":
                 runs = int(params.get("runs", ["15"])[0])
                 if not 1 <= runs <= 30:
                     raise ValueError("Число прогонов должно быть от 1 до 30")
                 payload = evaluate_robustness(runs)
+            else:
+                runs = int(params.get("runs", ["10"])[0])
+                if not 3 <= runs <= 20:
+                    raise ValueError("Для сравнения стратегий выберите от 3 до 20 сценариев")
+                comparison = run_benchmark(runs)
+                payload = {
+                    "runs": comparison["runs"],
+                    "baseline_policy": comparison["baseline_policy"],
+                    "winner": comparison["winner"],
+                    "summaries": comparison["summaries"],
+                }
         except ValueError as exc:
             self._json(400, {"error": str(exc)})
             return
@@ -211,7 +223,7 @@ def main() -> None:
     parser.add_argument("--host", default="127.0.0.1")
     parser.add_argument("--port", type=int, default=8765)
     args = parser.parse_args()
-    server = HTTPServer((args.host, args.port), DemoHandler)
+    server = ThreadingHTTPServer((args.host, args.port), DemoHandler)
     print(f"SignBridge demo: http://{args.host}:{args.port}", flush=True)
     try:
         server.serve_forever()

@@ -21,6 +21,7 @@ seed результат скачет от плюса к минусу, на су�
 """
 
 import sys
+from pathlib import Path
 
 import pandas as pd
 
@@ -31,8 +32,13 @@ CAMPAIGN_FILTER_COLUMNS = ["filter_arpu_segment", "filter_data_segment",
                             "filter_call_segment", "filter_current_tariff"]
 
 
-def evaluate_agent(agent, seed=None, verbose=True):
-    env, internals = make_mock_env(seed=seed)
+def evaluate_agent(agent, seed=None, verbose=True, data_root=None):
+    data_dir = Path(data_root) if data_root is not None else Path.cwd()
+    env, internals = make_mock_env(
+        seed=seed,
+        data_dir=str(data_dir / "data"),
+        profile_path=str(data_dir / "customer_profile.csv"),
+    )
 
     try:
         final_campaigns = agent.act(env)
@@ -56,7 +62,7 @@ def evaluate_agent(agent, seed=None, verbose=True):
     profile = env.customer_profile
     baseline = profile["predicted_arpu"].sum()
     import pandas as _pd
-    mock_model = _mock_impact_model(_pd.read_csv("data/change_tariff.csv"))
+    mock_model = _mock_impact_model(_pd.read_csv(data_dir / "data" / "change_tariff.csv"))
     result = score_campaigns(all_campaigns, profile, mock_model, env.tariffs,
                               baseline, _mock_fallback, team_id="local")
     result["n_pilots"] = len(pilots)

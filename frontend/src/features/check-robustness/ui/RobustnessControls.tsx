@@ -1,6 +1,8 @@
 import BarChartOutlined from "@ant-design/icons/lib/icons/BarChartOutlined";
 import { Button, InputNumber, Space, Typography } from "antd";
 
+import { useLanguage } from "@/shared/i18n";
+
 interface RobustnessControlsProps {
   runs: number;
   onRunsChange: (runs: number) => void;
@@ -14,12 +16,14 @@ export function RobustnessControls({
   onCheck,
   loading,
 }: RobustnessControlsProps) {
+  const { t } = useLanguage();
+
   return (
     <Space direction="vertical" size={8} className="w-full">
-      <Typography.Text strong>Число прогонов</Typography.Text>
+      <Typography.Text strong>{t.runCount}</Typography.Text>
       <Space.Compact className="w-full">
         <InputNumber
-          aria-label="Число прогонов"
+          aria-label={t.runCount}
           min={1}
           max={30}
           precision={0}
@@ -28,11 +32,11 @@ export function RobustnessControls({
           className="w-full"
         />
         <Button icon={<BarChartOutlined />} onClick={onCheck} loading={loading}>
-          Проверить
+          {t.check}
         </Button>
       </Space.Compact>
       <Typography.Text type="secondary" className="text-xs">
-        Сравнивает результат на разных seed одной и той же мок-модели.
+        {t.checkHelp}
       </Typography.Text>
     </Space>
   );
