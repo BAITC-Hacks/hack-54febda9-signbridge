@@ -25,6 +25,10 @@ When the user asks to work as a three-person team and delegation is available, s
 
 Assign one owner per file before parallel edits. The integration owner resolves recommendations, checks that campaign filters and names match the available environment values, and reports unresolved disagreements instead of silently combining incompatible assumptions. For a small or time-sensitive task, keep the team together and do not create unnecessary delegation.
 
+## Team task tracking
+
+Keep team assignments in `tasks/` as Markdown checklists, with one task file per owner or workstream and `tasks/chronology.md` as the append-only chronological record. The user will formulate new assignments after reviewing research. Do not invent or pre-empt those follow-up assignments: when the user provides or approves a new task, add its checklist items to the appropriate task file (create one if needed), append a dated entry with its owner and task ID to the chronology, and update the overview/status. Preserve earlier chronology entries; record scope or status changes as new dated entries instead of rewriting history. Use the date available in the environment and keep task ownership explicit.
+
 ## Working approach
 
 - Inspect the guide and relevant data/schema before choosing a strategy. Use `change_tariff.csv` as historical evidence, not as a guaranteed forecast for the judging audience.
