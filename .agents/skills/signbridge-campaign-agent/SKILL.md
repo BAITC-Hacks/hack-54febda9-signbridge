@@ -1,6 +1,6 @@
 ---
 name: signbridge-campaign-agent
-description: Help develop and evaluate the SignBridge hackathon tariff-campaign agent, including data analysis, pilot strategy, implementation, and coordination across three developers.
+description: Develop and evaluate the SignBridge hackathon tariff-campaign agent, coordinate its three workstreams, sync Git before work, and ask before committing changes.
 ---
 
 # SignBridge campaign agent
@@ -32,6 +32,14 @@ Assign one owner per file before parallel edits. The integration owner resolves 
 ## Team task tracking
 
 Keep team assignments in `tasks/` as Markdown checklists, with one task file per owner or workstream and `tasks/chronology.md` as the append-only chronological record. The user will formulate new assignments after reviewing research. Do not invent or pre-empt those follow-up assignments: when the user provides or approves a new task, add its checklist items to the appropriate task file (create one if needed), append a dated entry with its owner and task ID to the chronology, and update the overview/status. Preserve earlier chronology entries; record scope or status changes as new dated entries instead of rewriting history. Use the date available in the environment and keep task ownership explicit.
+
+## Git sync and commit approval
+
+- Before changing project files, inspect the current branch, upstream, and working-tree status. Pull the latest upstream changes with `git pull --ff-only` when safe. Never reset, discard, or silently stash existing user changes. If local changes or branch divergence prevent a safe fast-forward, preserve the work and explain the blocker before proceeding with conflicting files.
+- Finish the requested implementation and review the diff. Run relevant verification when requested or needed for the deliverable, and report what was actually run.
+- Immediately before handing work back, check for upstream changes and pull them with `git pull --ff-only` if the update can be applied without overwriting local work. If conflicts or divergent history prevent that, stop before committing and explain the state.
+- End with a concise summary and ask explicitly: **“Создать коммит этих изменений?”** Do not commit until the user confirms. Stage and commit only the files for the approved work; preserve unrelated staged or unstaged changes.
+- A commit approval does not authorize a push. Push only when the user explicitly asks for it.
 
 ## Working approach
 
